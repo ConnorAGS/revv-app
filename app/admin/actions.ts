@@ -19,6 +19,15 @@ export async function assignTechnician(jobId: string, technicianId: string) {
   revalidatePath('/admin')
 }
 
+export async function updateJobPriceAndDuration(jobId: string, price: number | null, estimatedMinutes: number | null) {
+  const supabase = await createServerSupabase()
+  await supabase
+    .from('bookings')
+    .update({ price, estimated_duration_minutes: estimatedMinutes })
+    .eq('id', jobId)
+  revalidatePath('/admin')
+}
+
 export async function signOut() {
   const supabase = await createServerSupabase()
   await supabase.auth.signOut()

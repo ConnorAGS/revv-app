@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerSupabase } from '@/lib/supabase-server'
+import { geocodeAddress } from '@/lib/geocode'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -23,6 +24,28 @@ export async function submitBooking(
   const address = formData.get('address') as string
   const notes = formData.get('notes') as string | null
 
+  const [coords, { data: historicalJobs }] = await Promise.all([
+    geocodeAddress(address),
+    supabase
+      .from('bookings')
+      .select('clocked_in_at, clocked_out_at')
+      .eq('service_type', service_type)
+      .eq('status', 'completed')
+      .not('clocked_in_at', 'is', null)
+      .not('clocked_out_at', 'is', null),
+  ])
+
+  // Calculate average actual duration from historical data
+  let estimatedMinutes: number | null = null
+  if (historicalJobs && historicalJobs.length >= 3) {
+    const durations = historicalJobs
+      .map(j => Math.round((new Date(j.clocked_out_at).getTime() - new Date(j.clocked_in_at).getTime()) / 60000))
+      .filter(d => d > 0 && d < 600)
+    if (durations.length) {
+      estimatedMinutes = Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+    }
+  }
+
   const { error } = await supabase.from('bookings').insert({
     name,
     phone,
@@ -32,8 +55,11 @@ export async function submitBooking(
     vehicle_make: vehicle_make || null,
     vehicle_model: vehicle_model || null,
     address,
+    latitude: coords?.lat ?? null,
+    longitude: coords?.lng ?? null,
     notes: notes || null,
     status: 'pending',
+    estimated_duration_minutes: estimatedMinutes,
   })
 
   if (error) return { success: false, error: error.message }

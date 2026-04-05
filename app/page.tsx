@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SiteNav } from '@/components/SiteNav'
 
 const SERVICES = [
   { icon: '🔧', label: 'Oil Change' },
@@ -20,22 +21,7 @@ const HOW_IT_WORKS = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-white font-sans">
-
-      {/* Nav */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <span className="text-xl font-bold text-gray-900 tracking-tight">Revv</span>
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            Admin
-          </Link>
-          <Link
-            href="/book"
-            className="text-sm font-semibold bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Book Now
-          </Link>
-        </div>
-      </header>
+      <SiteNav />
 
       {/* Hero */}
       <section className="bg-gray-50 py-24 px-6 text-center">
@@ -75,10 +61,7 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-10">Services we offer</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {SERVICES.map(({ icon, label }) => (
-              <div
-                key={label}
-                className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-5 text-center"
-              >
+              <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-5 text-center">
                 <div className="text-2xl mb-2">{icon}</div>
                 <p className="text-sm font-medium text-gray-700">{label}</p>
               </div>

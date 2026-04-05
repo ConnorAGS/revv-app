@@ -1,12 +1,14 @@
 'use client'
 
-import { useTransition } from 'react'
-import { updateJobStatus, assignTechnician } from './actions'
+import { useTransition, useState } from 'react'
+import { updateJobStatus, assignTechnician, updateJobPriceAndDuration } from './actions'
 
 export type Technician = {
   id: string
   name: string
-  active: boolean
+  status: string
+  latitude: number | null
+  longitude: number | null
 }
 
 export type Booking = {
@@ -19,10 +21,14 @@ export type Booking = {
   vehicle_make: string | null
   vehicle_model: string | null
   address: string
+  latitude: number | null
+  longitude: number | null
   notes: string | null
   status: string
   assigned_to: string | null
   created_at: string
+  price: number | null
+  estimated_duration_minutes: number | null
 }
 
 const STATUSES = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled']
@@ -39,9 +45,30 @@ function vehicle(b: Booking) {
   return [b.vehicle_year, b.vehicle_make, b.vehicle_model].filter(Boolean).join(' ') || '—'
 }
 
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function nearestTech(booking: Booking, technicians: Technician[]): { tech: Technician; miles: number } | null {
+  if (!booking.latitude || !booking.longitude) return null
+  const candidates = technicians.filter(t => t.latitude && t.longitude && !t.status?.includes('inactive'))
+  if (!candidates.length) return null
+  let best = candidates[0]
+  let bestDist = haversine(booking.latitude, booking.longitude, best.latitude!, best.longitude!)
+  for (const t of candidates.slice(1)) {
+    const d = haversine(booking.latitude, booking.longitude, t.latitude!, t.longitude!)
+    if (d < bestDist) { best = t; bestDist = d }
+  }
+  return { tech: best, miles: Math.round(bestDist * 10) / 10 }
+}
+
 function StatusSelect({ booking }: { booking: Booking }) {
   const [isPending, startTransition] = useTransition()
-
   return (
     <select
       value={booking.status}
@@ -52,23 +79,14 @@ function StatusSelect({ booking }: { booking: Booking }) {
       }`}
     >
       {STATUSES.map((s) => (
-        <option key={s} value={s}>
-          {s.replace('_', ' ')}
-        </option>
+        <option key={s} value={s}>{s.replace('_', ' ')}</option>
       ))}
     </select>
   )
 }
 
-function TechnicianSelect({
-  booking,
-  technicians,
-}: {
-  booking: Booking
-  technicians: Technician[]
-}) {
+function TechnicianSelect({ booking, technicians }: { booking: Booking; technicians: Technician[] }) {
   const [isPending, startTransition] = useTransition()
-
   return (
     <select
       value={booking.assigned_to ?? ''}
@@ -78,21 +96,66 @@ function TechnicianSelect({
     >
       <option value="">Unassigned</option>
       {technicians.map((t) => (
-        <option key={t.id} value={t.id}>
-          {t.name}
-        </option>
+        <option key={t.id} value={t.id}>{t.name}</option>
       ))}
     </select>
   )
 }
 
-export function JobsTable({
-  bookings,
-  technicians,
-}: {
-  bookings: Booking[]
-  technicians: Technician[]
-}) {
+function PriceEditor({ booking }: { booking: Booking }) {
+  const [isPending, startTransition] = useTransition()
+  const [editing, setEditing] = useState(false)
+  const [price, setPrice] = useState(booking.price?.toString() ?? '')
+  const [duration, setDuration] = useState(booking.estimated_duration_minutes?.toString() ?? '')
+
+  function save() {
+    startTransition(() => updateJobPriceAndDuration(
+      booking.id,
+      price ? parseFloat(price) : null,
+      duration ? parseInt(duration) : null,
+    ))
+    setEditing(false)
+  }
+
+  if (!editing) {
+    return (
+      <button onClick={() => setEditing(true)} className="text-left group">
+        <p className="text-sm font-medium text-gray-900">
+          {booking.price ? `$${booking.price}` : <span className="text-gray-300">—</span>}
+        </p>
+        <p className="text-xs text-gray-400">
+          {booking.estimated_duration_minutes ? `${booking.estimated_duration_minutes}min` : <span className="text-gray-300">no est.</span>}
+        </p>
+        <p className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">Edit</p>
+      </button>
+    )
+  }
+
+  return (
+    <div className="space-y-1.5 min-w-[100px]">
+      <input
+        type="number"
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+        placeholder="Price $"
+        className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+      />
+      <input
+        type="number"
+        value={duration}
+        onChange={(e) => setDuration(e.target.value)}
+        placeholder="Min (e.g. 90)"
+        className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+      />
+      <div className="flex gap-1">
+        <button onClick={save} disabled={isPending} className="flex-1 bg-blue-600 text-white rounded px-2 py-1 text-xs font-medium disabled:opacity-50">Save</button>
+        <button onClick={() => setEditing(false)} className="flex-1 border border-gray-200 rounded px-2 py-1 text-xs text-gray-500">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+export function JobsTable({ bookings, technicians }: { bookings: Booking[]; technicians: Technician[] }) {
   if (!bookings.length) {
     return <p className="text-center text-gray-400 py-16">No bookings yet.</p>
   }
@@ -114,8 +177,17 @@ export function JobsTable({
             <p className="text-sm font-medium text-blue-700 mb-1">{b.service_type}</p>
             <p className="text-sm text-gray-600">{vehicle(b)}</p>
             <p className="text-sm text-gray-500 mt-1 truncate">{b.address}</p>
-            <div className="mt-2">
+            {!b.assigned_to && (() => {
+              const suggestion = nearestTech(b, technicians)
+              return suggestion ? (
+                <p className="text-xs text-blue-600 mt-1">
+                  📍 Nearest: {suggestion.tech.name} ({suggestion.miles} mi)
+                </p>
+              ) : null
+            })()}
+            <div className="mt-3 flex items-center gap-3">
               <TechnicianSelect booking={b} technicians={technicians} />
+              <PriceEditor booking={b} />
             </div>
           </div>
         ))}
@@ -130,7 +202,8 @@ export function JobsTable({
               <th className="px-5 py-3.5 font-semibold text-gray-600">Service</th>
               <th className="px-5 py-3.5 font-semibold text-gray-600">Vehicle</th>
               <th className="px-5 py-3.5 font-semibold text-gray-600">Address</th>
-              <th className="px-5 py-3.5 font-semibold text-gray-600">Assigned To</th>
+              <th className="px-5 py-3.5 font-semibold text-gray-600">Price / Est.</th>
+              <th className="px-5 py-3.5 font-semibold text-gray-600">Assign / Suggestion</th>
               <th className="px-5 py-3.5 font-semibold text-gray-600">Status</th>
             </tr>
           </thead>
@@ -148,7 +221,18 @@ export function JobsTable({
                   <span className="truncate block">{b.address}</span>
                 </td>
                 <td className="px-5 py-4">
+                  <PriceEditor booking={b} />
+                </td>
+                <td className="px-5 py-4">
                   <TechnicianSelect booking={b} technicians={technicians} />
+                  {!b.assigned_to && (() => {
+                    const suggestion = nearestTech(b, technicians)
+                    return suggestion ? (
+                      <p className="text-xs text-blue-500 mt-1">
+                        📍 {suggestion.tech.name} · {suggestion.miles} mi
+                      </p>
+                    ) : null
+                  })()}
                 </td>
                 <td className="px-5 py-4">
                   <StatusSelect booking={b} />

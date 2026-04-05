@@ -11,12 +11,19 @@ export async function signIn(
 ): Promise<LoginState> {
   const supabase = await createServerSupabase()
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: formData.get('email') as string,
     password: formData.get('password') as string,
   })
 
   if (error) return { error: error.message }
 
-  redirect('/admin')
+  // Check if this user is a technician
+  const { data: tech } = await supabase
+    .from('technicians')
+    .select('id')
+    .eq('user_id', data.user.id)
+    .single()
+
+  redirect(tech ? '/tech' : '/admin')
 }
