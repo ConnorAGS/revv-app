@@ -1,7 +1,8 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { submitBooking, SERVICE_MINIMUMS } from './actions'
+import { submitBooking } from './actions'
+import { SERVICE_MINIMUMS } from '@/lib/service-prices'
 import type { BookingState } from './actions'
 import { SiteNav } from '@/components/SiteNav'
 import { PhoneInput } from '@/components/PhoneInput'

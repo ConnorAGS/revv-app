@@ -4,20 +4,9 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import { geocodeAddress } from '@/lib/geocode'
 import { Resend } from 'resend'
 import twilio from 'twilio'
+import { SERVICE_MINIMUMS } from '@/lib/service-prices'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-
-// Minimum prices per service type — edit to adjust floors
-export const SERVICE_MINIMUMS: Record<string, number> = {
-  'Oil Change': 79,
-  'Brake Service': 149,
-  'Tire Rotation': 49,
-  'Battery Replacement': 129,
-  'Engine Diagnostic': 89,
-  'AC Service': 129,
-  'Transmission Service': 249,
-  'Other': 79,
-}
 
 export type BookingState = {
   success: boolean
