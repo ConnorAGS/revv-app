@@ -123,6 +123,31 @@ export async function updateTechLocation(techId: string, latitude: number, longi
     .eq('id', techId)
 }
 
+export async function postJobUpdate(jobId: string, formData: FormData) {
+  const supabase = await createServerSupabase()
+  const message = (formData.get('message') as string | null)?.trim() || null
+  const file = formData.get('photo') as File | null
+
+  let photo_url: string | null = null
+
+  if (file && file.size > 0) {
+    const ext = file.name.split('.').pop()
+    const path = `${jobId}/update-${Date.now()}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('job-photos')
+      .upload(path, file, { upsert: true })
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from('job-photos').getPublicUrl(path)
+      photo_url = publicUrl
+    }
+  }
+
+  if (!message && !photo_url) return
+
+  await supabase.from('job_updates').insert({ booking_id: jobId, message, photo_url })
+  revalidatePath(`/tech/jobs/${jobId}`)
+}
+
 export async function signOut() {
   const supabase = await createServerSupabase()
   await supabase.auth.signOut()

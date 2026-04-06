@@ -2,7 +2,7 @@
 
 import { useTransition, useRef, useState } from 'react'
 import Link from 'next/link'
-import { clockIn, clockOut, markComplete, uploadPhoto, toggleChecklistItem, requestPart } from '../actions'
+import { clockIn, clockOut, markComplete, uploadPhoto, toggleChecklistItem, requestPart, postJobUpdate } from '../actions'
 
 type Job = {
   id: string
@@ -62,20 +62,41 @@ function ElapsedTimer({ clockedInAt }: { clockedInAt: string }) {
   return <span>{h > 0 ? `${h}h ${m}m` : `${m}m`}</span>
 }
 
+type Update = {
+  id: string
+  message: string | null
+  photo_url: string | null
+  created_at: string
+}
+
+const QUICK_UPDATES = [
+  'Starting diagnosis',
+  'Parts installed',
+  'Almost done',
+  'Found an issue — will call',
+  'Waiting on parts',
+  'Job complete',
+]
+
 export function JobDetail({
   job,
   checklist,
   parts,
+  updates: initialUpdates,
 }: {
   job: Job
   checklist: ChecklistItem[]
   parts: Part[]
+  updates: Update[]
 }) {
   const [isPending, startTransition] = useTransition()
-  const [activeTab, setActiveTab] = useState<'checklist' | 'parts' | 'photos' | 'notes'>('checklist')
+  const [activeTab, setActiveTab] = useState<'checklist' | 'parts' | 'photos' | 'updates' | 'notes'>('checklist')
   const [showPartForm, setShowPartForm] = useState(false)
+  const [updateText, setUpdateText] = useState('')
+  const [updatePending, setUpdatePending] = useState(false)
   const beforeRef = useRef<HTMLInputElement>(null)
   const afterRef = useRef<HTMLInputElement>(null)
+  const updatePhotoRef = useRef<HTMLInputElement>(null)
 
   const vehicle = [job.vehicle_year, job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`
@@ -90,8 +111,23 @@ export function JobDetail({
     startTransition(() => uploadPhoto(job.id, fd, type))
   }
 
+  async function handlePostUpdate(messageOverride?: string) {
+    const msg = messageOverride ?? updateText
+    const file = updatePhotoRef.current?.files?.[0]
+    if (!msg.trim() && !file) return
+    setUpdatePending(true)
+    const fd = new FormData()
+    if (msg.trim()) fd.append('message', msg)
+    if (file) fd.append('photo', file)
+    await postJobUpdate(job.id, fd)
+    setUpdateText('')
+    if (updatePhotoRef.current) updatePhotoRef.current.value = ''
+    setUpdatePending(false)
+  }
+
   const TABS = [
     { key: 'checklist', label: `Checklist${checklist.length ? ` (${completedCount}/${checklist.length})` : ''}` },
+    { key: 'updates', label: `Updates${initialUpdates.length ? ` (${initialUpdates.length})` : ''}` },
     { key: 'parts', label: `Parts${parts.length ? ` (${parts.length})` : ''}` },
     { key: 'photos', label: 'Photos' },
     { key: 'notes', label: 'Notes' },
@@ -301,6 +337,80 @@ export function JobDetail({
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Updates Tab */}
+        {activeTab === 'updates' && (
+          <div className="space-y-3">
+            {/* Quick chips */}
+            <div className="flex flex-wrap gap-2">
+              {QUICK_UPDATES.map(q => (
+                <button
+                  key={q}
+                  type="button"
+                  disabled={updatePending}
+                  onClick={() => handlePostUpdate(q)}
+                  className="text-xs font-medium bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-full hover:border-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+
+            {/* Freeform post */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+              <textarea
+                value={updateText}
+                onChange={e => setUpdateText(e.target.value)}
+                placeholder="What's happening with the job?"
+                rows={3}
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <div className="flex items-center gap-2">
+                <input ref={updatePhotoRef} type="file" accept="image/*" capture="environment" className="hidden" />
+                <button
+                  type="button"
+                  onClick={() => updatePhotoRef.current?.click()}
+                  className="flex items-center gap-1.5 text-xs font-medium text-gray-500 border border-gray-200 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Add Photo
+                </button>
+                <button
+                  type="button"
+                  disabled={updatePending || (!updateText.trim() && !updatePhotoRef.current?.files?.length)}
+                  onClick={() => handlePostUpdate()}
+                  className="ml-auto bg-red-600 text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-red-500 disabled:opacity-40 transition-colors"
+                >
+                  {updatePending ? 'Posting...' : 'Post Update'}
+                </button>
+              </div>
+            </div>
+
+            {/* Update feed */}
+            {initialUpdates.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">No updates posted yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {[...initialUpdates].reverse().map(u => (
+                  <div key={u.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                    <p className="text-xs text-gray-400 mb-2">
+                      {new Date(u.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      {' · '}
+                      {new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                    {u.message && <p className="text-sm text-gray-800 mb-2">{u.message}</p>}
+                    {u.photo_url && (
+                      <img src={u.photo_url} alt="Update" className="w-full rounded-xl object-cover max-h-56" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

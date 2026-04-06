@@ -16,20 +16,21 @@ export default async function TrackJobPage({ params }: { params: Promise<{ id: s
   if (!booking) notFound()
 
   // Fetch the assigned technician if there is one
-  let technician = null
-  if (booking.assigned_to) {
-    const { data: tech } = await supabase
-      .from('technicians')
-      .select('name, phone')
-      .eq('id', booking.assigned_to)
-      .single()
-    technician = tech
-  }
+  const [techResult, updatesResult] = await Promise.all([
+    booking.assigned_to
+      ? supabase.from('technicians').select('name, phone').eq('id', booking.assigned_to).single()
+      : Promise.resolve({ data: null }),
+    supabase.from('job_updates').select('id, message, photo_url, created_at').eq('booking_id', id).order('created_at'),
+  ])
 
   return (
     <div>
       <SiteNav />
-      <JobTracker initialBooking={booking} technician={technician} />
+      <JobTracker
+        initialBooking={booking}
+        technician={techResult.data}
+        initialUpdates={updatesResult.data ?? []}
+      />
     </div>
   )
 }

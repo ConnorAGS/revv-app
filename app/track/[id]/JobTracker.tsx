@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 
+type Update = {
+  id: string
+  message: string | null
+  photo_url: string | null
+  created_at: string
+}
+
 type Booking = {
   id: string
   name: string
@@ -65,15 +72,19 @@ function LiveTimer({ clockedInAt }: { clockedInAt: string }) {
 export function JobTracker({
   initialBooking,
   technician,
+  initialUpdates,
 }: {
   initialBooking: Booking
   technician: Technician | null
+  initialUpdates: Update[]
 }) {
   const [booking, setBooking] = useState(initialBooking)
+  const [updates, setUpdates] = useState<Update[]>(initialUpdates)
 
   useEffect(() => {
     const supabase = createClient()
-    const channel = supabase
+
+    const bookingChannel = supabase
       .channel(`booking-${booking.id}`)
       .on(
         'postgres_changes',
@@ -81,7 +92,20 @@ export function JobTracker({
         (payload) => setBooking(payload.new as Booking)
       )
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+
+    const updatesChannel = supabase
+      .channel(`updates-${booking.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'job_updates', filter: `booking_id=eq.${booking.id}` },
+        (payload) => setUpdates(prev => [...prev, payload.new as Update])
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(bookingChannel)
+      supabase.removeChannel(updatesChannel)
+    }
   }, [booking.id])
 
   const stepIndex = getStepIndex(booking.status)
@@ -206,6 +230,45 @@ export function JobTracker({
               >
                 Call
               </a>
+            </div>
+          </div>
+        )}
+
+        {/* Live updates feed */}
+        {updates.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Live Updates</p>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <p className="text-xs text-gray-400">Live</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {[...updates].reverse().map((u, i) => (
+                <div key={u.id} className={`flex gap-3 ${i !== 0 ? 'pt-4 border-t border-gray-50' : ''}`}>
+                  {/* Timeline dot */}
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-red-600 mt-1.5" />
+                    {i < updates.length - 1 && <div className="w-px flex-1 bg-gray-100 mt-1" />}
+                  </div>
+                  <div className="flex-1 min-w-0 pb-1">
+                    <p className="text-xs text-gray-400 mb-1">
+                      {new Date(u.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      {' · '}
+                      {new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                    {u.message && <p className="text-sm text-gray-800 leading-snug">{u.message}</p>}
+                    {u.photo_url && (
+                      <img
+                        src={u.photo_url}
+                        alt="Job update"
+                        className="w-full rounded-xl object-cover max-h-56 mt-2"
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

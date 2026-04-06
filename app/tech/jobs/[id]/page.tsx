@@ -49,9 +49,10 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
     )
   }
 
-  const [{ data: checklist }, { data: parts }] = await Promise.all([
+  const [{ data: checklist }, { data: parts }, { data: updates }] = await Promise.all([
     supabase.from('checklist_items').select('*').eq('booking_id', id).order('sort_order'),
     supabase.from('parts_requests').select('*').eq('booking_id', id).order('created_at'),
+    supabase.from('job_updates').select('*').eq('booking_id', id).order('created_at'),
   ])
 
   return (
@@ -59,6 +60,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
       job={job}
       checklist={checklist ?? []}
       parts={parts ?? []}
+      updates={updates ?? []}
     />
   )
 }
