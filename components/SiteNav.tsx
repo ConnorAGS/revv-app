@@ -2,33 +2,45 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/book', label: 'Book a Service' },
+  { href: '/track', label: 'Track a Job' },
 ]
 
 export function SiteNav() {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
-    <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
-        {/* Logo */}
-        <Link href="/" className="text-xl font-bold text-gray-900 tracking-tight">
-          Revv
+    <header
+      className={`sticky top-0 z-40 transition-all duration-300 ${
+        scrolled
+          ? 'bg-[#08090C]/95 backdrop-blur-md border-b border-white/5 shadow-lg shadow-black/20'
+          : 'bg-transparent'
+      }`}
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+        <Link href="/" className="font-display text-2xl text-red-600 tracking-wider">
+          REVV
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden sm:flex items-center gap-6">
+        <nav className="hidden sm:flex items-center gap-8">
           {NAV_LINKS.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
               className={`text-sm font-medium transition-colors ${
-                pathname === href ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800'
+                pathname === href ? 'text-white' : 'text-gray-400 hover:text-white'
               }`}
             >
               {label}
@@ -36,25 +48,20 @@ export function SiteNav() {
           ))}
         </nav>
 
-        {/* Desktop CTA */}
         <div className="hidden sm:flex items-center gap-3">
-          <Link
-            href="/login"
-            className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
-          >
+          <Link href="/login" className="text-sm text-gray-400 hover:text-white font-medium transition-colors">
             Sign in
           </Link>
           <Link
             href="/book"
-            className="text-sm font-semibold bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="text-sm font-bold bg-red-600 text-white px-5 py-2.5 rounded-xl hover:bg-red-500 transition-all shadow-[0_0_20px_rgba(220,38,38,0.25)] hover:shadow-[0_0_30px_rgba(220,38,38,0.45)]"
           >
             Book Now
           </Link>
         </div>
 
-        {/* Mobile hamburger */}
         <button
-          className="sm:hidden p-2 text-gray-500 hover:text-gray-700"
+          className="sm:hidden p-2 text-gray-400 hover:text-white transition-colors"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle menu"
         >
@@ -70,32 +77,27 @@ export function SiteNav() {
         </button>
       </div>
 
-      {/* Mobile menu */}
       {menuOpen && (
-        <div className="sm:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
+        <div className="sm:hidden bg-[#08090C] border-t border-white/5 px-4 py-4 space-y-1">
           {NAV_LINKS.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setMenuOpen(false)}
-              className={`block py-2 text-sm font-medium transition-colors ${
-                pathname === href ? 'text-gray-900' : 'text-gray-500'
+              className={`block py-2.5 text-sm font-medium transition-colors ${
+                pathname === href ? 'text-white' : 'text-gray-400'
               }`}
             >
               {label}
             </Link>
           ))}
-          <Link
-            href="/login"
-            onClick={() => setMenuOpen(false)}
-            className="block py-2 text-sm font-medium text-gray-500"
-          >
+          <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2.5 text-sm font-medium text-gray-400">
             Sign in
           </Link>
           <Link
             href="/book"
             onClick={() => setMenuOpen(false)}
-            className="block mt-2 text-center bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg"
+            className="block mt-3 text-center bg-red-600 text-white text-sm font-bold px-4 py-3 rounded-xl"
           >
             Book Now
           </Link>

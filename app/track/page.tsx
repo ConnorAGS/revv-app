@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { SiteNav } from '@/components/SiteNav'
+import { PhoneInput } from '@/components/PhoneInput'
 
 type Booking = {
   id: string
@@ -37,20 +38,31 @@ export default function TrackPage() {
   const [bookings, setBookings] = useState<Booking[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function lookup() {
-    if (!phone.trim()) return
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length < 10) return
     setLoading(true)
     setSearched(true)
+    setError(null)
 
     const supabase = createClient()
-    const { data } = await supabase
-      .from('bookings')
-      .select('id, service_type, address, status, created_at, vehicle_year, vehicle_make, vehicle_model')
-      .eq('phone', phone.trim())
-      .order('created_at', { ascending: false })
+    const { data, error: rpcError } = await supabase
+      .rpc('search_bookings_by_phone', { search_phone: digits })
 
-    setBookings(data ?? [])
+    if (rpcError) {
+      // Fallback: direct query if RPC doesn't exist yet
+      const { data: fallback } = await supabase
+        .from('bookings')
+        .select('id, service_type, address, status, created_at, vehicle_year, vehicle_make, vehicle_model')
+        .or(`phone.eq.${phone.trim()},phone.eq.${digits},phone.eq.${digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}`)
+        .order('created_at', { ascending: false })
+      setBookings(fallback ?? [])
+    } else {
+      setBookings(data ?? [])
+    }
+
     setLoading(false)
   }
 
@@ -61,34 +73,32 @@ export default function TrackPage() {
       <div className="max-w-lg mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 bg-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[0_4px_20px_rgba(220,38,38,0.3)]">
             <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Track Your Job</h1>
+          <h1 className="font-display text-4xl text-gray-900 tracking-wide">Track Your Job</h1>
           <p className="text-gray-500 mt-1 text-sm">Enter the phone number you booked with</p>
         </div>
 
         {/* Phone lookup */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
           <div className="flex gap-2">
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && lookup()}
-              placeholder="e.g. 555-123-4567"
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <PhoneInput
+              name="phone"
+              onChange={setPhone}
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
             />
             <button
               onClick={lookup}
-              disabled={loading || !phone.trim()}
-              className="bg-blue-600 text-white font-semibold px-5 py-3 rounded-xl text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              disabled={loading || phone.replace(/\D/g, '').length < 10}
+              className="bg-red-600 text-white font-bold px-5 py-3 rounded-xl text-sm hover:bg-red-500 disabled:opacity-50 transition-colors"
             >
               {loading ? '...' : 'Find'}
             </button>
           </div>
+          {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
         </div>
 
         {/* Results */}
@@ -97,7 +107,7 @@ export default function TrackPage() {
             {bookings.length === 0 ? (
               <div className="text-center py-10 text-gray-400">
                 <p className="font-medium">No bookings found</p>
-                <p className="text-sm mt-1">Check the phone number or <Link href="/book" className="text-blue-600 underline">book a service</Link>.</p>
+                <p className="text-sm mt-1">Check the number or <Link href="/book" className="text-red-600 underline">book a service</Link>.</p>
               </div>
             ) : (
               <>
@@ -123,7 +133,7 @@ export default function TrackPage() {
                       </div>
                       <p className="text-sm text-gray-400 truncate">{b.address}</p>
                       <p className="text-xs text-gray-300 mt-1">{new Date(b.created_at).toLocaleDateString()}</p>
-                      <p className="text-xs text-blue-600 font-medium mt-2">View details →</p>
+                      <p className="text-xs text-red-600 font-medium mt-2">View details →</p>
                     </Link>
                   )
                 })}
@@ -132,7 +142,6 @@ export default function TrackPage() {
           </div>
         )}
 
-        {/* No search yet */}
         {!searched && (
           <div className="text-center py-8 text-gray-300">
             <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

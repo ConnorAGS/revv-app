@@ -14,20 +14,18 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <Link href="/" className="text-3xl font-bold text-gray-900">Revv</Link>
+        <div className="text-center mb-8">
+          <Link href="/" className="font-display text-4xl text-red-600 tracking-wider">REVV</Link>
+          <p className="text-gray-500 text-sm mt-2">Mobile auto repair, at your door.</p>
         </div>
 
         {/* Role toggle */}
-        <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+        <div className="flex bg-gray-200 rounded-xl p-1 mb-6">
           <button
             type="button"
             onClick={() => setRole('customer')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
-              role === 'customer'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+              role === 'customer' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Customer
@@ -35,10 +33,8 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setRole('technician')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
-              role === 'technician'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+              role === 'technician' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Technician
@@ -48,18 +44,18 @@ export default function LoginPage() {
         {/* Customer view */}
         {role === 'customer' && (
           <div className="bg-white rounded-2xl shadow-md p-6 space-y-3">
-            <p className="text-center text-gray-500 text-sm mb-4">
+            <p className="text-center text-gray-500 text-sm mb-2">
               Get your car fixed — we come to you.
             </p>
             <Link
               href="/book"
-              className="block w-full text-center bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors"
+              className="block w-full text-center bg-red-600 text-white font-bold py-3.5 rounded-xl hover:bg-red-500 transition-colors shadow-[0_4px_20px_rgba(220,38,38,0.2)]"
             >
               Book a Service
             </Link>
             <Link
               href="/track"
-              className="block w-full text-center border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors"
+              className="block w-full text-center border border-gray-200 text-gray-700 font-semibold py-3.5 rounded-xl hover:bg-gray-50 transition-colors"
             >
               Track My Job
             </Link>
@@ -85,7 +81,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
 
@@ -97,14 +93,14 @@ export default function LoginPage() {
                 type="password"
                 required
                 autoComplete="current-password"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
 
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-gray-900 text-white rounded-lg py-3 font-semibold text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-gray-900 text-white rounded-lg py-3 font-bold text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isPending ? 'Signing in...' : 'Sign In'}
             </button>

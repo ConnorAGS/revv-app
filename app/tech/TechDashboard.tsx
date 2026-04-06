@@ -66,7 +66,7 @@ function LiveTimer({ clockedInAt }: { clockedInAt: string }) {
   const m = Math.floor((elapsed % 3600) / 60)
   const s = elapsed % 60
   return (
-    <span className="font-mono text-2xl font-bold text-green-600">
+    <span className="font-mono text-2xl font-bold text-white">
       {h > 0 ? `${h}:` : ''}{String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}
     </span>
   )
@@ -92,7 +92,6 @@ export function TechDashboard({
     return 'Good evening'
   }
 
-  // Supabase Realtime — subscribe to booking changes for this tech
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
@@ -122,7 +121,6 @@ export function TechDashboard({
     return () => { supabase.removeChannel(channel) }
   }, [techId])
 
-  // Fit map to all plotted jobs
   useEffect(() => {
     const map = mapRef.current?.getMap()
     if (!map) return
@@ -153,30 +151,23 @@ export function TechDashboard({
     <div className="min-h-screen bg-gray-50">
 
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-4 pb-4">
-        <p className="text-sm text-gray-500">{greeting()}</p>
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">{techName.split(' ')[0]}</h1>
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4">
+        <p className="text-xs text-gray-400 uppercase tracking-widest mb-0.5">{greeting()}</p>
+        <h1 className="font-display text-4xl text-gray-900 tracking-wider mb-4">{techName.split(' ')[0]}</h1>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="bg-gray-50 rounded-xl p-2.5 text-center">
-            <p className="text-base font-bold text-gray-900">${todayRevenue.toFixed(0)}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">Revenue</p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-2.5 text-center">
-            <p className="text-base font-bold text-gray-900">{completedToday.length}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">Done</p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-2.5 text-center">
-            <p className="text-base font-bold text-gray-900">{remainingJobs.length}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">Remaining</p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-2.5 text-center">
-            <p className="text-base font-bold text-gray-900">
-              {estRemaining ? `${Math.round(estRemaining / 60 * 10) / 10}h` : '—'}
-            </p>
-            <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">Est. left</p>
-          </div>
+          {[
+            { value: `$${todayRevenue.toFixed(0)}`, label: 'Revenue', accent: 'text-green-600' },
+            { value: String(completedToday.length), label: 'Done', accent: 'text-blue-600' },
+            { value: String(remainingJobs.length), label: 'Remaining', accent: 'text-red-600' },
+            { value: estRemaining ? `${Math.round(estRemaining / 60 * 10) / 10}h` : '—', label: 'Est. left', accent: 'text-purple-600' },
+          ].map(({ value, label, accent }) => (
+            <div key={label} className="bg-gray-50 rounded-xl p-2.5 text-center border border-gray-100">
+              <p className={`text-base font-bold ${accent}`}>{value}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5 leading-tight uppercase tracking-wide">{label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -186,10 +177,10 @@ export function TechDashboard({
         {activeJob && (
           <Link href={`/tech/jobs/${activeJob.id}`} className="block bg-green-600 rounded-2xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-green-100 uppercase tracking-wide">Active Job</span>
+              <span className="text-xs font-bold text-green-100 uppercase tracking-widest">Active Job</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-green-300 animate-pulse" />
-                <span className="text-xs text-green-100">Live</span>
+                <span className="text-xs text-green-200">Live</span>
               </div>
             </div>
             <p className="text-white font-bold text-lg leading-tight">{activeJob.service_type}</p>
@@ -202,7 +193,7 @@ export function TechDashboard({
         {/* Next job card */}
         {!activeJob && nextJob && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Next Job</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Next Job</p>
             <p className="font-bold text-gray-900 text-lg leading-tight">{nextJob.service_type}</p>
             <p className="text-gray-500 text-sm mb-1">{nextJob.name}</p>
             <p className="text-gray-400 text-sm truncate mb-3">{nextJob.address}</p>
@@ -211,13 +202,13 @@ export function TechDashboard({
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nextJob.address)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 text-center bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl"
+                className="flex-1 text-center bg-red-600 text-white text-sm font-bold py-2.5 rounded-xl hover:bg-red-500 transition-colors"
               >
                 Get Directions
               </a>
               <Link
                 href={`/tech/jobs/${nextJob.id}`}
-                className="flex-1 text-center border border-gray-200 text-gray-700 text-sm font-semibold py-2.5 rounded-xl"
+                className="flex-1 text-center border border-gray-200 text-gray-700 text-sm font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 View Job
               </Link>
@@ -229,10 +220,12 @@ export function TechDashboard({
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <div>
-              <p className="text-sm font-semibold text-gray-900">Today's Jobs</p>
+              <p className="text-sm font-semibold text-gray-900">Today&apos;s Jobs</p>
               <p className="text-xs text-gray-400">Live · {plottedJobs.length} locations</p>
             </div>
-            <Link href="/tech/map" className="text-xs text-blue-600 font-medium">Full map →</Link>
+            <Link href="/tech/map" className="text-xs text-red-600 font-semibold hover:text-red-500 transition-colors">
+              Full map →
+            </Link>
           </div>
 
           {plottedJobs.length === 0 ? (
@@ -268,7 +261,6 @@ export function TechDashboard({
                 ))}
               </Map>
 
-              {/* Pin popup */}
               {selectedPin && (
                 <div className="absolute bottom-3 left-3 right-3 bg-white rounded-xl shadow-lg border border-gray-100 p-3 z-10">
                   <div className="flex items-start justify-between">
@@ -290,7 +282,7 @@ export function TechDashboard({
                   </div>
                   <Link
                     href={`/tech/jobs/${selectedPin.id}`}
-                    className="block mt-2 text-center bg-gray-900 text-white text-xs font-semibold py-2 rounded-lg"
+                    className="block mt-2 text-center bg-red-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-red-500 transition-colors"
                   >
                     View Job
                   </Link>
@@ -301,8 +293,8 @@ export function TechDashboard({
         </div>
 
         {/* Job list */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">All Jobs Today</p>
+        <div className="space-y-2 pb-24">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1 mb-3">All Jobs Today</p>
           {jobs.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
               <p className="font-medium">No jobs assigned</p>
