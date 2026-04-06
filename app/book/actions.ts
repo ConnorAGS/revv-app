@@ -6,6 +6,18 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+// Minimum prices per service type — edit these to adjust floors
+const SERVICE_MINIMUMS: Record<string, number> = {
+  'Oil Change': 79,
+  'Brake Service': 149,
+  'Tire Rotation': 49,
+  'Battery Replacement': 129,
+  'Engine Diagnostic': 89,
+  'AC Service': 129,
+  'Transmission Service': 249,
+  'Other': 79,
+}
+
 export type BookingState = { success: boolean; error: string | null }
 
 export async function submitBooking(
@@ -60,6 +72,7 @@ export async function submitBooking(
     notes: notes || null,
     status: 'pending',
     estimated_duration_minutes: estimatedMinutes,
+    price: SERVICE_MINIMUMS[service_type] ?? 79,
   })
 
   if (error) return { success: false, error: error.message }
