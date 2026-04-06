@@ -9,7 +9,7 @@ export default async function TrackJobPage({ params }: { params: Promise<{ id: s
 
   const { data: booking } = await supabase
     .from('bookings')
-    .select('id, name, phone, service_type, vehicle_year, vehicle_make, vehicle_model, address, notes, status, clocked_in_at, clocked_out_at, created_at, price, estimated_duration_minutes, assigned_to')
+    .select('id, name, phone, service_type, vehicle_year, vehicle_make, vehicle_model, address, notes, status, clocked_in_at, clocked_out_at, created_at, price, estimated_duration_minutes, assigned_to, photo_before, photo_after')
     .eq('id', id)
     .single()
 
