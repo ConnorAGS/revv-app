@@ -206,7 +206,7 @@ export function QuickBookingPanel({ customer, vehicles, onClose }: Props) {
                 <input name="vehicle_make" placeholder="Make" className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
                 <input name="vehicle_model" placeholder="Model" className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
               </div>
-            )}}
+            )}
           </div>
 
           {/* Address */}
