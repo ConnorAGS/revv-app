@@ -41,7 +41,8 @@ export async function createTechnician(
     return { error: dbError.message, success: false }
   }
 
-  revalidatePath('/admin/technicians')
+  revalidatePath('/admin/technicians', 'page')
+  revalidatePath('/admin', 'page')
   return { success: true, error: null }
 }
 
