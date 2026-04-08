@@ -6,7 +6,11 @@ import { Resend } from 'resend'
 import twilio from 'twilio'
 import { SERVICE_MINIMUMS } from '@/lib/service-prices'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  const key = process.env.RESEND_API_KEY
+  if (!key) return null
+  return new Resend(key)
+}
 
 export type BookingState = {
   success: boolean
@@ -113,7 +117,8 @@ export async function submitBooking(
 
   // Email confirmation
   if (email) {
-    await resend.emails.send({
+    const resend = getResend()
+    await resend?.emails.send({
       from: 'Revv <onboarding@resend.dev>',
       to: email,
       subject: 'Your Revv booking is confirmed',
