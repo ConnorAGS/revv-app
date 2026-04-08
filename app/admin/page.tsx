@@ -26,7 +26,7 @@ export default async function AdminPage() {
   }))
 
   return (
-    <div className="py-8 px-4 sm:px-6">
+    <div className="pt-14 pb-8 px-4 sm:px-6 sm:pt-8">
       <div className="max-w-6xl mx-auto">
 
         {/* Header */}
