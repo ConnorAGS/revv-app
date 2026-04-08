@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import Link from 'next/link'
 import { addCustomerVehicle } from './actions'
 import { QuickBookingPanel } from './QuickBookingPanel'
+import { decodeVin } from '@/lib/nhtsa'
 
 type Booking = {
   id: string
@@ -24,6 +25,12 @@ type SavedVehicle = {
   year: string | null
   make: string | null
   model: string | null
+  trim: string | null
+  color: string | null
+  license_plate: string | null
+  vin: string | null
+  mileage: number | null
+  engine: string | null
   notes: string | null
 }
 
@@ -102,44 +109,111 @@ function AddCustomerModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+const INPUT = "border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 w-full"
+
 function AddCarForm({ phone, onDone }: { phone: string; onDone: () => void }) {
   const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [decoding, setDecoding] = useState(false)
+  const [decoded, setDecoded] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  const setField = (name: string, value: string | null) => {
+    const el = formRef.current?.elements.namedItem(name) as HTMLInputElement | null
+    if (el && value) el.value = value
+  }
+
+  async function handleVinDecode() {
+    const vin = (formRef.current?.elements.namedItem('vin') as HTMLInputElement)?.value?.trim()
+    if (!vin || vin.length < 11) return
+    setDecoding(true)
+    setDecoded(false)
+    const result = await decodeVin(vin)
+    setDecoding(false)
+    if (!result) {
+      setError('Could not decode VIN — check it and try again.')
+      return
+    }
+    setField('year', result.year)
+    setField('make', result.make)
+    setField('model', result.model)
+    setField('trim', result.trim)
+    setField('engine', result.engine)
+    setError(null)
+    setDecoded(true)
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setError(null)
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
-      await addCustomerVehicle(phone, fd)
-      onDone()
+      const result = await addCustomerVehicle(phone, fd)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        onDone()
+      }
     })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-4 space-y-3 mt-2">
+    <form ref={formRef} onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-4 space-y-3 mt-2">
       <p className="text-xs font-semibold text-gray-700">New Vehicle</p>
-      <div className="grid grid-cols-3 gap-2">
-        <input
-          name="year"
-          placeholder="Year"
-          maxLength={4}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-        />
-        <input
-          name="make"
-          placeholder="Make"
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-        />
-        <input
-          name="model"
-          placeholder="Model"
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-        />
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs">{error}</div>
+      )}
+
+      {/* VIN with decode button */}
+      <div>
+        <label className="block text-xs font-medium text-gray-500 mb-1">VIN — enter to auto-fill vehicle info</label>
+        <div className="flex gap-2">
+          <input name="vin" placeholder="17-digit VIN" maxLength={17} className={INPUT} />
+          <button
+            type="button"
+            onClick={handleVinDecode}
+            disabled={decoding}
+            className="shrink-0 bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+          >
+            {decoding ? 'Looking up...' : 'Decode VIN'}
+          </button>
+        </div>
+        {decoded && (
+          <p className="text-xs text-green-600 mt-1 font-medium">Vehicle info filled in from NHTSA</p>
+        )}
       </div>
-      <input
+
+      {/* Year / Make / Model */}
+      <div className="grid grid-cols-3 gap-2">
+        <input name="year" placeholder="Year" maxLength={4} className={INPUT} />
+        <input name="make" placeholder="Make" className={INPUT} />
+        <input name="model" placeholder="Model" className={INPUT} />
+      </div>
+
+      {/* Trim / Color */}
+      <div className="grid grid-cols-2 gap-2">
+        <input name="trim" placeholder="Trim (e.g. Sport, EX-L)" className={INPUT} />
+        <input name="color" placeholder="Color" className={INPUT} />
+      </div>
+
+      {/* License Plate / Mileage */}
+      <div className="grid grid-cols-2 gap-2">
+        <input name="license_plate" placeholder="License Plate" className={INPUT} />
+        <input name="mileage" type="number" placeholder="Mileage" className={INPUT} />
+      </div>
+
+      {/* Engine */}
+      <input name="engine" placeholder="Engine (e.g. 2.0L 4-cyl)" className={INPUT} />
+
+      {/* Notes */}
+      <textarea
         name="notes"
-        placeholder="Notes (optional — e.g. color, trim)"
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+        placeholder="Notes (any other details)"
+        rows={2}
+        className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 w-full resize-none"
       />
+
       <div className="flex gap-2">
         <button
           type="submit"
@@ -367,8 +441,15 @@ export function CustomersTable({
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-gray-900">
                                   {[v.year, v.make, v.model].filter(Boolean).join(' ') || 'Unknown Vehicle'}
+                                  {v.trim ? <span className="text-gray-400 font-normal"> · {v.trim}</span> : null}
                                 </p>
-                                {v.notes && <p className="text-xs text-gray-400">{v.notes}</p>}
+                                <div className="flex flex-wrap gap-x-3 mt-0.5">
+                                  {v.color && <span className="text-xs text-gray-400">{v.color}</span>}
+                                  {v.license_plate && <span className="text-xs text-gray-400">🪪 {v.license_plate}</span>}
+                                  {v.mileage && <span className="text-xs text-gray-400">{v.mileage.toLocaleString()} mi</span>}
+                                  {v.vin && <span className="text-xs text-gray-300 font-mono truncate max-w-[120px]">{v.vin}</span>}
+                                  {v.notes && <span className="text-xs text-gray-400 italic">{v.notes}</span>}
+                                </div>
                               </div>
                               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Saved</span>
                               <VehicleRecordIcons />

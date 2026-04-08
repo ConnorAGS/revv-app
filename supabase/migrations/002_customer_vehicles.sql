@@ -1,12 +1,18 @@
 -- Customer vehicles — stores cars linked to a customer (by phone)
 create table public.customer_vehicles (
-  id           uuid primary key default gen_random_uuid(),
-  customer_phone text not null,
-  year         text,
-  make         text,
-  model        text,
-  notes        text,
-  created_at   timestamptz not null default now()
+  id              uuid primary key default gen_random_uuid(),
+  customer_phone  text not null,
+  year            text,
+  make            text,
+  model           text,
+  trim            text,
+  color           text,
+  license_plate   text,
+  vin             text,
+  mileage         integer,
+  engine          text,
+  notes           text,
+  created_at      timestamptz not null default now()
 );
 
 alter table public.customer_vehicles enable row level security;

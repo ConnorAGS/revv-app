@@ -11,7 +11,7 @@ export default async function CustomersPage() {
       .order('created_at', { ascending: false }),
     supabase
       .from('customer_vehicles')
-      .select('id, customer_phone, year, make, model, notes')
+      .select('id, customer_phone, year, make, model, trim, color, license_plate, vin, mileage, engine, notes')
       .order('created_at', { ascending: false }),
   ])
 
@@ -63,7 +63,7 @@ export default async function CustomersPage() {
   )
 
   // Group saved vehicles by phone
-  const vehiclesByPhone = new Map<string, { id: string; year: string | null; make: string | null; model: string | null; notes: string | null }[]>()
+  const vehiclesByPhone = new Map<string, NonNullable<typeof savedVehicles>>()
   for (const v of savedVehicles ?? []) {
     const key = v.customer_phone
     if (!vehiclesByPhone.has(key)) vehiclesByPhone.set(key, [])
