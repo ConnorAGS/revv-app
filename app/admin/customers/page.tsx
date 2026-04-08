@@ -4,10 +4,16 @@ import { CustomersTable } from './CustomersTable'
 export default async function CustomersPage() {
   const supabase = await createServerSupabase()
 
-  const { data: bookings } = await supabase
-    .from('bookings')
-    .select('id, name, phone, email, status, price, service_type, created_at, vehicle_year, vehicle_make, vehicle_model')
-    .order('created_at', { ascending: false })
+  const [{ data: bookings }, { data: savedVehicles }] = await Promise.all([
+    supabase
+      .from('bookings')
+      .select('id, name, phone, email, status, price, service_type, created_at, vehicle_year, vehicle_make, vehicle_model')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('customer_vehicles')
+      .select('id, customer_phone, year, make, model, notes')
+      .order('created_at', { ascending: false }),
+  ])
 
   // Aggregate bookings into customers (keyed by phone digits)
   const customerMap = new Map<string, {
@@ -56,12 +62,22 @@ export default async function CustomersPage() {
     (a, b) => new Date(b.lastBookingAt).getTime() - new Date(a.lastBookingAt).getTime()
   )
 
+  // Group saved vehicles by phone
+  const vehiclesByPhone = new Map<string, { id: string; year: string | null; make: string | null; model: string | null; notes: string | null }[]>()
+  for (const v of savedVehicles ?? []) {
+    const key = v.customer_phone
+    if (!vehiclesByPhone.has(key)) vehiclesByPhone.set(key, [])
+    vehiclesByPhone.get(key)!.push(v)
+  }
+
   return (
-    <div className="py-8 px-4 sm:px-6">
+    <div className="pt-14 pb-8 px-4 sm:px-6 sm:pt-8">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{customers.length} unique customers</p>
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{customers.length} unique customers</p>
+          </div>
         </div>
 
         {/* Summary stats */}
@@ -86,7 +102,7 @@ export default async function CustomersPage() {
           </div>
         </div>
 
-        <CustomersTable customers={customers} />
+        <CustomersTable customers={customers} vehiclesByPhone={vehiclesByPhone} />
       </div>
     </div>
   )
